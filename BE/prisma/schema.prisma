@@ -1,0 +1,103 @@
+
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TradeType {
+  BUY
+  SELL
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String   @map("password_hash")
+  role           Role     @default(USER)
+  virtualBalance Decimal  @default(100000) @map("virtual_balance") @db.Decimal(18, 8)
+  initialBalance Decimal  @default(100000) @map("inital_balance") @db.Decimal(18, 8)
+  createsAt      DateTime @default(now()) @map("created_at")
+
+  holdings      Holding[]
+  trades        Trade[]
+  watchList     Watchlist[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Holding {
+  id          String  @id @default(uuid())
+  userId      String  @map("user_id")
+  symbol      String
+  quantity    Decimal @db.Decimal(18, 8)
+  avgBuyPrice Decimal @map("avg_buy_price") @db.Decimal(18, 8)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, symbol])
+  @@map("holdings")
+}
+
+model Trade {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  symbol     String
+  tradeType  TradeType @map("trade_type")
+  quantity   Decimal   @db.Decimal(18, 8)
+  price      Decimal   @db.Decimal(18, 8)
+  totalValue Decimal   @map("total_value") @db.Decimal(18, 8)
+  executedAt DateTime  @default(now()) @map("executed_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("trades")
+}
+
+model Watchlist {
+  id      String   @id @default(uuid())
+  userId  String   @map("user_id")
+  symbol  String
+  addedAt DateTime @default(now()) @map("added_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("watchlist")
+}
+
+model TradingPair {
+  id       String   @id @default(uuid())
+  symbol   String   @unique
+  isActive Boolean  @default(true) @map("is_active")
+  addedAt  DateTime @default(now()) @map("added_at")
+
+  @@map("trading_pairs")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+
+  user User @relation(fields: userId, references: id)
+
+  @@map("refresh_token")
+}
+
+model PriceSnapshot {
+  id         String   @id @default(uuid())
+  symbol     String   @unique
+  price      Decimal  @db.Decimal(18, 8)
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@map("price_snapshot")
+}
