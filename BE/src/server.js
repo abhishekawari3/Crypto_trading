@@ -1,27 +1,48 @@
-import http from 'http';
-import app from './app.js';
-import{ Server } from "socket.io";
+require('dotenv').config();
 
-const server = http.createServer(app);
-
-const io = new Server(server,{
-    corss: {
-        origin:"*"
-    }
-});
-
-app.set("io, io");
-
-io.on("connection", (socket) =>{
-    console.log("Client connected", socket.id);
-
-    socket.on("disconnect", ()=>{
-        console.log("Client disconnected");
-    });
-});
+const http = require('http');
+const app = require('./app');
+const { connectDB, disconnectDB } = require('./config/db');
+const { connectRedis } = require('./config/redis');
+const { initializeSocket, subscribeToPriceUpdates } = require('./config/socket');
+const priceFeedService = require('./services/priceFeedService');
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, ()=>{
-    console.log(`Server running on port ${PORT}`)
-});
+const start = async () => {
+  try {
+    await connectDB();
+    await connectRedis();
+
+    const httpServer = http.createServer(app);
+
+    // initializeSocket() must run before any route/service calls getIO()
+    initializeSocket(httpServer);
+    subscribeToPriceUpdates();
+
+    // Begin streaming live prices from Binance
+    await priceFeedService.start();
+
+    httpServer.listen(PORT, () => {
+      console.log(`[Server] Crypto Trading Simulator running on port ${PORT}`);
+      console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+    const shutdown = async (signal) => {
+      console.log(`\n[Server] Received ${signal}. Shutting down gracefully...`);
+      priceFeedService.stop();
+      httpServer.close(async () => {
+        await disconnectDB();
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+  } catch (err) {
+    console.error('[Server] Failed to start:', err);
+    process.exit(1);
+  }
+};
+
+start();

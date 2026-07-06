@@ -1,10 +1,10 @@
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -18,18 +18,18 @@ enum TradeType {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  passwordHash   String   @map("password_hash")
-  role           Role     @default(USER)
-  virtualBalance Decimal  @default(100000) @map("virtual_balance") @db.Decimal(18, 8)
-  initialBalance Decimal  @default(100000) @map("inital_balance") @db.Decimal(18, 8)
-  createsAt      DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String   @map("password_hash")
+  role            Role     @default(USER)
+  virtualBalance  Decimal  @default(10000) @db.Decimal(18, 8) @map("virtual_balance")
+  initialBalance  Decimal  @default(10000) @db.Decimal(18, 8) @map("initial_balance")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  holdings      Holding[]
-  trades        Trade[]
-  watchList     Watchlist[]
-  refreshTokens RefreshToken[]
+  holdings        Holding[]
+  trades          Trade[]
+  watchlist       Watchlist[]
+  refreshTokens   RefreshToken[]
 
   @@map("users")
 }
@@ -41,24 +41,26 @@ model Holding {
   quantity    Decimal @db.Decimal(18, 8)
   avgBuyPrice Decimal @map("avg_buy_price") @db.Decimal(18, 8)
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, symbol])
   @@map("holdings")
 }
 
 model Trade {
-  id         String    @id @default(uuid())
-  userId     String    @map("user_id")
-  symbol     String
-  tradeType  TradeType @map("trade_type")
-  quantity   Decimal   @db.Decimal(18, 8)
-  price      Decimal   @db.Decimal(18, 8)
-  totalValue Decimal   @map("total_value") @db.Decimal(18, 8)
-  executedAt DateTime  @default(now()) @map("executed_at")
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  symbol      String
+  tradeType   TradeType @map("trade_type")
+  quantity    Decimal   @db.Decimal(18, 8)
+  price       Decimal   @db.Decimal(18, 8)
+  totalValue  Decimal   @map("total_value") @db.Decimal(18, 8)
+  executedAt  DateTime  @default(now()) @map("executed_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([symbol])
   @@map("trades")
 }
 
@@ -68,9 +70,22 @@ model Watchlist {
   symbol  String
   addedAt DateTime @default(now()) @map("added_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, symbol])
   @@map("watchlist")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@map("refresh_tokens")
 }
 
 model TradingPair {
@@ -82,22 +97,12 @@ model TradingPair {
   @@map("trading_pairs")
 }
 
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  tokenHash String   @map("token_hash")
-  expiresAt DateTime @map("expires_at")
-
-  user User @relation(fields: userId, references: id)
-
-  @@map("refresh_token")
-}
-
 model PriceSnapshot {
   id         String   @id @default(uuid())
-  symbol     String   @unique
+  symbol     String
   price      Decimal  @db.Decimal(18, 8)
   recordedAt DateTime @default(now()) @map("recorded_at")
 
-  @@map("price_snapshot")
+  @@index([symbol])
+  @@map("price_snapshots")
 }

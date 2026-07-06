@@ -1,29 +1,43 @@
-import express from "express";
-import cors from "cors";
-import helemet from "helmet";
-import cookieParser from "cookie-parser";
-import rateLimit from"express-rate-limit";
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
 
-import dotenv from "dotenv";
+const { generalLimiter } = require('./middleware/rateLimitMiddleware');
+const { errorHandler, notFoundHandler } = require('./middleware/errorMiddleware');
 
-dotenv.config();
+const authRoutes = require('./routes/authRoutes');
+const tradeRoutes = require('./routes/tradeRoutes');
+const portfolioRoutes = require('./routes/portfolioRoutes');
+const watchlistRoutes = require('./routes/watchlistRoutes');
+const marketRoutes = require('./routes/marketRoutes');
+const leaderboardRoutes = require('./routes/leaderboardRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-app.use(cors());
-app.use(helemt());
-app.use(cookieParser());
+app.use(helmet());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || '*',
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(generalLimiter);
 
-app.use(rateLimit({
-    windowMs: 15*60*1000,
-    max: 100
-}));
-
-app.get("/", (req,res)=>{
-    res.json({
-        message:"Paper Trade API"
-    });
+app.get('/health', (req, res) => {
+  res.status(200).json({ success: true, message: 'OK', timestamp: new Date().toISOString() });
 });
 
-module.exports = app;
+app.use('/api/auth', authRoutes);
+app.use('/api/trade', tradeRoutes);
+app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/prices', marketRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/admin', adminRoutes);
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+module.exports = app;

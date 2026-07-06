@@ -11,6 +11,11 @@ const redisOptions = {
   },
 };
 
+// Three separate connections:
+// - redisClient: general cache reads/writes
+// - redisPublisher: publishes price updates
+// - redisSubscriber: subscribes to price channel (a connection in SUBSCRIBE mode
+//   cannot run other commands, so it must be isolated)
 const redisClient = new Redis(redisOptions);
 const redisPublisher = new Redis(redisOptions);
 const redisSubscriber = new Redis(redisOptions);
