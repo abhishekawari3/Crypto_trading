@@ -1,0 +1,12 @@
+[Error] AppError: Invalid email or password
+    at Object.login (C:\Users\abhis\OneDrive\Pictures\Desktop\Project\Papertrade\BE\src\services\authService.js:84:11)
+    at async login (C:\Users\abhis\OneDrive\Pictures\Desktop\Project\Papertrade\BE\src\controllers\authController.js:14:20) {
+  statusCode: 401,
+  isOperational: true
+}
+[Error] AppError: Invalid email or password
+    at Object.login (C:\Users\abhis\OneDrive\Pictures\Desktop\Project\Papertrade\BE\src\services\authService.js:84:11)
+    at async login (C:\Users\abhis\OneDrive\Pictures\Desktop\Project\Papertrade\BE\src\controllers\authController.js:14:20) {
+  statusCode: 401,
+  isOperational: true
+}

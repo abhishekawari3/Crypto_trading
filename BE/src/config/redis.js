@@ -4,6 +4,7 @@ const redisOptions = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT, 10) || 6379,
   password: process.env.REDIS_PASSWORD || undefined,
+  connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT, 10) || 10000,
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
     const delay = Math.min(times * 100, 3000);
@@ -27,10 +28,30 @@ const connectRedis = async () => {
     let connected = 0;
     const clients = [redisClient, redisPublisher, redisSubscriber];
     const names = ['client', 'publisher', 'subscriber'];
+    const timeoutMs = parseInt(process.env.REDIS_CONNECT_TIMEOUT, 10) || 10000;
+
+    const checkClientReady = (client, name) => {
+      if (client.status === 'ready') {
+        console.log(`[Redis] ${name} already ready`);
+        connected += 1;
+        if (connected === clients.length) {
+          isReady = true;
+          resolve();
+        }
+        return true;
+      }
+      return false;
+    };
 
     clients.forEach((client, i) => {
-      client.on('connect', () => {
-        console.log(`[Redis] ${names[i]} connected`);
+      const name = names[i];
+
+      if (checkClientReady(client, name)) {
+        return;
+      }
+
+      client.once('ready', () => {
+        console.log(`[Redis] ${name} ready`);
         connected += 1;
         if (connected === clients.length) {
           isReady = true;
@@ -38,17 +59,17 @@ const connectRedis = async () => {
         }
       });
 
-      client.on('error', (err) => {
-        console.error(`[Redis] ${names[i]} error:`, err.message);
+      client.once('error', (err) => {
+        console.error(`[Redis] ${name} error:`, err.message);
       });
     });
 
     // Fail fast if redis is completely unreachable
     setTimeout(() => {
       if (!isReady) {
-        reject(new Error('Redis connection timed out after 10s'));
+        reject(new Error(`Redis connection timed out after ${timeoutMs / 1000}s`));
       }
-    }, 10000);
+    }, timeoutMs);
   });
 };
 
